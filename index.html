@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coffee Companion</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☕</text></svg>">
+<style>
+:root{--bg:#faf6f0;--card:#fff;--ink:#2b1d14;--mute:#7a665a;--line:#e6dacb;--accent:#8a4b24;--accent-ink:#fff;--soft:#f3e9dc;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#1a120d;--card:#251a13;--ink:#f3e7da;--mute:#b09c8c;--line:#3b2b20;--accent:#d9955a;--accent-ink:#1a120d;--soft:#2f2218;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:2rem;margin:.2em 0 .1em}
+.sub{color:var(--mute);margin:0 0 18px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+nav button,.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:999px;font:inherit;cursor:pointer}
+nav button[aria-selected=true],.chip[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+label.l{display:block;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.stat{background:var(--soft);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:1.35rem;font-family:Georgia,serif}
+.stat span{font-size:.78rem;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+ol,ul{padding-left:1.2em}li{margin:.35em 0}
+h2{font-family:Georgia,serif;margin:.2em 0 .4em}
+h3{margin:1em 0 .3em;font-size:1.05rem}
+.note{background:var(--soft);border-left:4px solid var(--accent);padding:10px 14px;border-radius:8px;margin:12px 0;font-size:.95rem}
+details{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:8px 0;background:var(--card)}
+summary{cursor:pointer;font-weight:600}
+.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:480px}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);font-size:.92rem}
+th{color:var(--mute);font-weight:600}
+footer{color:var(--mute);font-size:.8rem;margin-top:30px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>☕ Coffee Companion</h1>
+  <p class="sub">Café-quality coffee at home on a semi-manual machine. Pick a drink and get the beans, grind, doses and milk.</p>
+  <nav role="tablist" id="tabs"></nav>
+  <main id="view"></main>
+  <footer>Starting points, not rules. Every machine, grinder and bean is different, so taste, adjust and trust your palate.</footer>
+</div>
+
+<script>
+const DRINKS = {
+  "Short black": {shots:1, ml:0, milk:0, cup:"60–90 ml demitasse", water:0, foam:"None",
+    blurb:"Pure, concentrated espresso. The truest test of your beans and grind.",
+    build:["Preheat the cup with hot water, then tip it out.","Pull a single shot into the cup.","Serve straight away while the crema is fresh."]},
+  "Long black": {shots:2, milk:0, cup:"150–180 ml cup", water:100, foam:"None",
+    blurb:"Hot water first, espresso poured over the top so the crema stays intact.",
+    build:["Add about 100 ml of 90 °C water to a warm cup.","Pull a double shot directly on top.","Don’t stir. Sip through the crema."]},
+  "Americano": {shots:2, milk:0, cup:"180–220 ml cup", water:140, foam:"None",
+    blurb:"Espresso first, then topped with hot water. Smoother and slightly lighter than a long black.",
+    build:["Pull a double shot into a warm cup.","Add about 140 ml of hot water (90 °C).","Stir once and serve."]},
+  "Piccolo latte": {shots:1, milk:60, cup:"90–100 ml glass", water:0, foam:"Thin microfoam",
+    blurb:"A ristretto-style shot with a little silky milk. Small, strong and sweet.",
+    build:["Pull a short shot (about 20 ml out for 9 g in) into a small glass.","Steam milk to 60 °C with a thin, glossy microfoam.","Pour slowly to fill the glass."]},
+  "Macchiato": {shots:1, milk:15, cup:"60–90 ml cup", water:0, foam:"A spoonful of foam",
+    blurb:"Espresso “marked” with a dollop of foam. Bold with just a hint of milk.",
+    build:["Pull a single shot.","Steam a small amount of milk, keeping plenty of foam.","Spoon 1–2 teaspoons of foam on top."]},
+  "Flat white": {shots:2, milk:130, cup:"160–180 ml cup", water:0, foam:"Thin, velvety microfoam (~5 mm)",
+    blurb:"Strong coffee with velvety milk. Little foam, lots of flavour.",
+    build:["Pull a double shot into a warm cup.","Steam milk to 60–65 °C, stretching only briefly (3–4 sec) then texturing until glossy.","Pour from low and close to the surface to blend, finishing with a thin white ring."]},
+  "Cappuccino": {shots:2, milk:130, cup:"180–200 ml cup", water:0, foam:"Thicker foam (~1 cm)",
+    blurb:"Equal parts espresso, steamed milk and foam, with a chocolate dust if you like.",
+    build:["Pull a double shot into a warm cup.","Steam milk to 60–65 °C, stretching for 6–8 sec for extra foam.","Pour so the foam sits as a pillow on top. Dust with cocoa if desired."]},
+  "Latte": {shots:2, milk:190, cup:"220–250 ml glass", water:0, foam:"Thin layer (~5 mm)",
+    blurb:"Milkier and milder. A great gateway coffee.",
+    build:["Pull a double shot into a warm glass.","Steam milk to 60–65 °C with a light microfoam.","Pour gently and finish with a thin cap of foam."]},
+  "Mocha": {shots:2, milk:150, choc:15, cup:"220–250 ml glass", water:0, foam:"Thin layer",
+    blurb:"Coffee meets chocolate. Sweet, rich and comforting.",
+    build:["Put about 15 g of drinking chocolate (or a square of dark chocolate) in the glass.","Pull a double shot onto it and stir until smooth.","Add steamed milk (60–65 °C) and top with a little foam."]}
+};
+
+const state = {tab:"drinks", drink:"Flat white", grinder:"built-in", cups:1, shots:null};
+
+const TABS = [["drinks","Drinks"],["beans","Beans"],["dialin","Dial-in & fixes"],["care","Cups & machine care"]];
+
+function $(s,r){return (r||document).querySelector(s)}
+function el(html){const d=document.createElement("div");d.innerHTML=html.trim();return d.firstChild}
+
+function renderTabs(){
+  const nav=$("#tabs");nav.innerHTML="";
+  TABS.forEach(([id,label])=>{
+    const b=document.createElement("button");b.textContent=label;b.setAttribute("role","tab");
+    b.setAttribute("aria-selected",state.tab===id);
+    b.onclick=()=>{state.tab=id;render();try{history.replaceState(null,"","#"+id)}catch(e){}};
+    nav.appendChild(b);
+  });
+}
+
+function drinksView(){
+  const d=DRINKS[state.drink], n=state.cups;
+  const shots = state.shots || d.shots;
+  const dose = shots===1 ? 9 : 18;
+  const out = shots===1 ? "18–20" : "36–40";
+  const beans = dose*n;
+  const pitcher = d.milk ? Math.round(d.milk*n*1.25/10)*10 : 0;
+  const chips = Object.keys(DRINKS).map(k=>`<button class="chip" data-d="${k}" aria-pressed="${k===state.drink}">${k}</button>`).join("");
+  const stats = [
+    ["Beans (dose)", beans+" g", "9 g per single · 18 g per double"],
+    ["Shot yield", out+" ml", shots===1?"Single shot, per cup":"Double shot, per cup"],
+    ["Extraction", "25–30 sec", "First drops to finish"],
+    ["Milk in cup", d.milk? (d.milk*n)+" ml":"None", d.milk?`Pour about ${pitcher} ml into the jug`:""],
+    ["Cup size", d.cup, ""],
+    ["Foam", d.foam, ""]
+  ];
+  if(d.water) stats.splice(3,0,["Hot water", (d.water*n)+" ml","About 90 °C, not boiling"]);
+  if(d.choc) stats.push(["Chocolate", (d.choc*n)+" g","Drinking chocolate"]);
+  const g = state.grinder==="built-in"
+    ? "Use the grind-size dial, then purge the first 2 g after any change. Dose by time or by the machine’s setting and check with scales."
+    : "Weigh the dose with 0.1 g scales, grind on demand and level the bed before tamping.";
+  return `
+  <div class="card">
+    <label class="l">Choose a drink</label>
+    <div class="row" id="chips">${chips}</div>
+    <div class="row">
+      <div><label class="l">Grinder</label>
+        <button class="chip" data-g="built-in" aria-pressed="${state.grinder==="built-in"}">Built-in</button>
+        <button class="chip" data-g="separate" aria-pressed="${state.grinder==="separate"}">Separate</button></div>
+      <div><label class="l">Shots per cup</label>
+        <button class="chip" data-s="1" aria-pressed="${shots===1}">Single</button>
+        <button class="chip" data-s="2" aria-pressed="${shots===2}">Double</button></div>
+      <div><label class="l">Cups</label>
+        ${[1,2,3,4].map(c=>`<button class="chip" data-c="${c}" aria-pressed="${state.cups===c}">${c}</button>`).join("")}</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>${state.drink}</h2>
+    <p>${d.blurb}</p>
+    <div class="grid">${stats.map(s=>`<div class="stat"><span>${s[0]}</span><b>${s[1]}</b><small>${s[2]}</small></div>`).join("")}</div>
+    ${shots!==d.shots?`<div class="note">This ${state.drink.toLowerCase()} is usually made with a ${d.shots===1?"single":"double"} shot. The steps below mention that, so swap in your ${shots===1?"single":"double"} shot instead. Milk and water amounts stay the same.</div>`:""}
+    <h3>Make it</h3>
+    <ol>
+      <li>Preheat the machine, portafilter and cup. Flush the group head for a few seconds.</li>
+      <li>Grind <b>fine</b> (finer than table salt, but not powder). ${g}</li>
+      <li>Distribute evenly, then tamp level with firm, even pressure (about 15 kg, don’t twist).</li>
+      <li>Brew at roughly 93 °C and 9 bar for 25–30 seconds. Aim for a thin, steady, honey-coloured flow.</li>
+      ${d.build.map(s=>`<li>${s}</li>`).join("")}
+    </ol>
+    ${d.milk?`<div class="note"><b>Milk tip:</b> Start with very cold milk in a cold jug, fill to just below the spout base, and stop at 60–65 °C (too hot to hold comfortably for more than a second or two). Full-cream gives the sweetest, silkiest texture. Wipe and purge the wand straight after steaming.</div>`:""}
+  </div>
+  <div class="card tbl"><h3>At a glance (per cup)</h3>
+    <table><tr><th>Drink</th><th>Shots</th><th>Beans</th><th>Milk</th><th>Cup</th></tr>
+    ${Object.entries(DRINKS).map(([k,v])=>`<tr><td>${k}</td><td>${v.shots===1?"Single":"Double"}</td><td>${v.shots===1?9:18} g</td><td>${v.milk?v.milk+" ml":v.water?v.water+" ml water":"—"}</td><td>${v.cup}</td></tr>`).join("")}
+    </table></div>`;
+}
+
+function beansView(){return `
+  <div class="card"><h2>Sourcing the right beans</h2>
+    <ul>
+      <li><b>Buy whole beans</b>, not pre-ground. Ground coffee loses aroma within minutes.</li>
+      <li><b>Check the roast date</b>, not just the best-before. Brew between 7 and 28 days after roasting. Freshly roasted beans (under a week) can be gassy and hard to dial in.</li>
+      <li><b>Buy from a local roaster</b> or a café that sells bags. Ask what they recommend for espresso and milk.</li>
+      <li><b>Buy small:</b> 250 g bags that you’ll finish in 2–3 weeks beat a 1 kg bag that goes stale.</li>
+    </ul>
+    <h3>Choosing a roast</h3>
+    <div class="tbl"><table>
+      <tr><th>Drink style</th><th>Roast</th><th>What to expect</th></tr>
+      <tr><td>Short black, long black, americano</td><td>Medium</td><td>Balanced, sweet, some fruit and acidity</td></tr>
+      <tr><td>Flat white, latte, cappuccino, mocha</td><td>Medium to medium-dark</td><td>Chocolate, caramel and nut that cut through milk</td></tr>
+      <tr><td>Piccolo, macchiato</td><td>Medium-dark blend</td><td>Bold, rounded, low acidity</td></tr>
+    </table></div>
+    <div class="note"><b>Built-in grinder?</b> Avoid very dark, oily beans. The oils can clog the burrs and chute. Look for a dry, evenly roasted bean.</div>
+    <h3>Reading the bag</h3>
+    <ul>
+      <li><b>“Espresso blend”</b> is built to be forgiving and works well with milk.</li>
+      <li><b>Single origin</b> is more distinctive but can taste sharper. Best tried black first.</li>
+      <li>Arabica-forward blends are sweeter. A small robusta share adds crema and body.</li>
+    </ul>
+    <h3>Storing beans</h3>
+    <ul>
+      <li>Airtight container, in a cool, dark cupboard. Away from the kettle and stove.</li>
+      <li>Avoid the fridge. Freezing is only for bulk: portion into small bags and don’t refreeze.</li>
+      <li>Only fill the grinder hopper with a few days’ worth of beans.</li>
+    </ul>
+  </div>`}
+
+function dialinView(){return `
+  <div class="card"><h2>Dial in your grind</h2>
+    <p>Keep everything else constant (dose and temperature) and only change the grind. Change one step at a time.</p>
+    <ol>
+      <li>Weigh 18 g of beans for a double shot. Target 36–40 g of coffee in the cup in 25–30 seconds.</li>
+      <li>Time the shot from the moment you start the pump.</li>
+      <li>Taste, then adjust using the guide below.</li>
+    </ol>
+    <div class="tbl"><table>
+      <tr><th>What you see or taste</th><th>Likely cause</th><th>Fix</th></tr>
+      <tr><td>Under 20 sec, thin, sour, sharp</td><td>Under-extracted</td><td>Grind finer</td></tr>
+      <tr><td>Over 35 sec, bitter, dry, harsh</td><td>Over-extracted</td><td>Grind coarser</td></tr>
+      <tr><td>Drips slowly or chokes</td><td>Too fine or overdosed</td><td>Coarser grind, check dose</td></tr>
+      <tr><td>Fast, gushing flow</td><td>Too coarse or under-dosed</td><td>Finer grind, check dose</td></tr>
+      <tr><td>Pale or no crema</td><td>Stale beans or coarse grind</td><td>Fresher beans, finer grind</td></tr>
+      <tr><td>Spurts from the side</td><td>Uneven tamp or distribution</td><td>Level the bed, tamp straight</td></tr>
+      <tr><td>Weak and watery</td><td>Dose too low or ratio too long</td><td>Raise dose or stop the shot earlier</td></tr>
+      <tr><td>Milk is flat or bubbly</td><td>Technique or milk temp</td><td>Cold milk, wand just under surface, then lower</td></tr>
+    </table></div>
+    <h3>Built-in grinder tips</h3>
+    <ul><li>Make small dial steps and pull a purge shot after each change.</li><li>Clean the burrs every few weeks and wipe the chute.</li></ul>
+    <h3>Separate grinder tips</h3>
+    <ul><li>Weigh every dose. A 0.5 g error is noticeable.</li><li>Use a funnel or the WDT trick (a thin needle) to break clumps.</li><li>Brush out leftover grinds before the next shot.</li></ul>
+  </div>`}
+
+function careView(){return `
+  <div class="card"><h2>Looking after cups</h2>
+    <ul>
+      <li><b>Preheat every cup.</b> Rinse with hot water or leave them on top of the machine. A cold cup drops espresso temperature fast.</li>
+      <li><b>Choose thick-walled ceramic</b> or double-wall glass to hold heat. Thin cups cool too quickly.</li>
+      <li><b>Rinse straight after use.</b> Coffee oils and tannins stain quickly when left to dry.</li>
+      <li><b>Wash by hand</b> with warm water and a soft sponge. Check whether your cups are dishwasher safe.</li>
+      <li><b>Remove stains:</b> soak in warm water with a spoon of bicarb soda, or use a denture tablet or a dedicated cup cleaner. Avoid scouring pads.</li>
+      <li><b>Dry fully</b> before stacking so cups stay odour-free. Don’t stack cups that still have crema marks.</li>
+      <li><b>Store upside down</b> or on a rack, not near strong smells.</li>
+    </ul>
+    <h3>Milk jug</h3>
+    <ul><li>Rinse straight after steaming. Dried milk is hard to remove and affects the next drink’s taste.</li></ul>
+  </div>
+  <div class="card"><h2>Machine care schedule</h2>
+    <details open><summary>After every drink</summary><p>Wipe the steam wand with a damp cloth and purge it. Knock out the puck, rinse the portafilter and flush the group head.</p></details>
+    <details><summary>Daily</summary><p>Empty and rinse the drip tray and water tank. Use fresh water. Wipe down the machine and grinder.</p></details>
+    <details><summary>Weekly</summary><p>Backflush with water (and a coffee machine cleaning powder if your machine allows it). Soak the portafilter and baskets in cleaner. Clean the shower screen.</p></details>
+    <details><summary>Every 1–3 months</summary><p>Descale based on how hard your water is. Check the manufacturer’s instructions. Replace the water filter if fitted. Deep clean the grinder burrs.</p></details>
+    <div class="note">Use filtered water. It improves flavour and reduces scale build-up. Avoid distilled water, which some machines can’t sense.</div>
+  </div>`}
+
+function bind(){
+  document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{state.drink=b.dataset.d;state.shots=null;render()});
+  document.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{state.grinder=b.dataset.g;render()});
+  document.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{state.shots=+b.dataset.s;render()});
+  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{state.cups=+b.dataset.c;render()});
+}
+
+function render(){
+  renderTabs();
+  $("#view").innerHTML = ({drinks:drinksView,beans:beansView,dialin:dialinView,care:careView})[state.tab]();
+  bind();
+}
+(function(){const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h))state.tab=h;render()})();
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h)){state.tab=h;render()}});
+</script>
+</body>
+</html>
